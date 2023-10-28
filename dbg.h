@@ -872,6 +872,7 @@ class DebugOutput {
       path = ".." + path.substr(path_length - MAX_PATH_LENGTH, MAX_PATH_LENGTH);
     }
     std::stringstream ss;
+    path = "";
     ss << ansi(ANSI_DEBUG) << "[" << path << ":" << line << " ("
        << function_name << ")] " << ansi(ANSI_RESET);
     m_location = ss.str();
