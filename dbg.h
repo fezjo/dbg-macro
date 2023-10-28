@@ -888,7 +888,10 @@ class DebugOutput {
           << "The number of arguments mismatch, please check unprotected comma"
           << ansi(ANSI_RESET) << std::endl;
     }
-    return print_impl(exprs.begin(), types.begin(), std::forward<T>(values)...);
+    std::cerr << m_location;
+    auto &&res = print_impl(exprs.begin(), types.begin(), std::forward<T>(values)...);
+    std::cerr << std::endl;
+    return res;
   }
 
  private:
@@ -899,15 +902,15 @@ class DebugOutput {
     const bool print_expr_and_type = pretty_print(stream_value, ref, MAX_RANK);
 
     std::stringstream output;
-    output << m_location;
+    // output << m_location;
     if (print_expr_and_type) {
       output << ansi(ANSI_EXPRESSION) << *expr << ansi(ANSI_RESET) << " = ";
     }
     output << ansi(ANSI_VALUE) << stream_value.str() << ansi(ANSI_RESET);
-    if (print_expr_and_type) {
-      output << " (" << ansi(ANSI_TYPE) << *type << ansi(ANSI_RESET) << ")";
-    }
-    output << std::endl;
+    // if (print_expr_and_type) {
+    //   output << " (" << ansi(ANSI_TYPE) << *type << ansi(ANSI_RESET) << ")";
+    // }
+    // output << std::endl;
     std::cerr << output.str();
 
     return std::forward<T>(value);
@@ -919,6 +922,7 @@ class DebugOutput {
                   T&& value,
                   U&&... rest) -> last_t<T, U...> {
     print_impl(exprs, types, std::forward<T>(value));
+    std::cerr << " | ";
     return print_impl(exprs + 1, types + 1, std::forward<U>(rest)...);
   }
 
