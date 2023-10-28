@@ -793,7 +793,7 @@ inline typename std::enable_if<detail::is_container<const Container&>::value,
 pretty_print(std::ostream& stream, const Container& value, DBG_RANK_T) {
   stream << "{";
   const size_t size = detail::size(value);
-  const size_t n = std::min(size_t{10}, size);
+  const size_t n = std::min((size_t)1e18, size);
   size_t i = 0;
   using std::begin;
   using std::end;
