@@ -73,6 +73,17 @@ License (MIT):
 
 namespace dbg {
 
+template<size_t N>
+struct rank: rank<N - 1> {};
+
+template<>
+struct rank<0> {};
+
+using MAX_RANK_T = rank<16>;
+using DFL_RANK_T = rank<1>;
+using DBG_RANK_T = rank<0>;
+constexpr auto MAX_RANK = MAX_RANK_T{};
+
 inline bool isColorizedOutputEnabled() {
 #if defined(DBG_MACRO_FORCE_COLOR)
   return true;
@@ -419,10 +430,14 @@ print_type<T> type() {
 // Forward declarations of "pretty_print"
 
 template <typename T>
-inline void pretty_print(std::ostream& stream, const T& value, std::true_type);
+inline typename std::enable_if<detail::has_ostream_operator<const T&>::value, bool>::type
+pretty_print(std::ostream& stream, const T& value, DFL_RANK_T);
 
 template <typename T>
-inline void pretty_print(std::ostream&, const T&, std::false_type);
+inline void pretty_print(std::ostream& stream, const T& value, std::true_type, DBG_RANK_T);
+
+template <typename T>
+inline void pretty_print(std::ostream&, const T&, std::false_type, DBG_RANK_T);
 
 template <typename T>
 inline typename std::enable_if<
@@ -430,73 +445,71 @@ inline typename std::enable_if<
         !detail::is_container_adapter<const T&>::value &&
         !std::is_enum<T>::value,
     bool>::type
-pretty_print(std::ostream& stream, const T& value);
+pretty_print(std::ostream& stream, const T& value, DBG_RANK_T);
 
-inline bool pretty_print(std::ostream& stream, const bool& value);
+inline bool pretty_print(std::ostream& stream, const bool& value, DBG_RANK_T);
 
-inline bool pretty_print(std::ostream& stream, const char& value);
+inline bool pretty_print(std::ostream& stream, const char& value, DBG_RANK_T);
 
 template <typename P>
-inline bool pretty_print(std::ostream& stream, P* const& value);
+inline bool pretty_print(std::ostream& stream, P* const& value, DBG_RANK_T);
 
 template <typename T, typename Deleter>
-inline bool pretty_print(std::ostream& stream,
-                         std::unique_ptr<T, Deleter>& value);
+inline bool pretty_print(std::ostream& stream, std::unique_ptr<T, Deleter>& value, DBG_RANK_T);
 
 template <typename T>
-inline bool pretty_print(std::ostream& stream, std::shared_ptr<T>& value);
+inline bool pretty_print(std::ostream& stream, std::shared_ptr<T>& value, DBG_RANK_T);
 
 template <size_t N>
-inline bool pretty_print(std::ostream& stream, const char (&value)[N]);
+inline bool pretty_print(std::ostream& stream, const char (&value)[N], DBG_RANK_T);
 
 template <>
-inline bool pretty_print(std::ostream& stream, const char* const& value);
+inline bool pretty_print(std::ostream& stream, const char* const& value, DBG_RANK_T);
 
 template <typename... Ts>
-inline bool pretty_print(std::ostream& stream, const std::tuple<Ts...>& value);
+inline bool pretty_print(std::ostream& stream, const std::tuple<Ts...>& value, DBG_RANK_T);
 
 template <>
-inline bool pretty_print(std::ostream& stream, const std::tuple<>&);
+inline bool pretty_print(std::ostream& stream, const std::tuple<>&, DBG_RANK_T);
 
 template <>
-inline bool pretty_print(std::ostream& stream, const time&);
+inline bool pretty_print(std::ostream& stream, const time&, DBG_RANK_T);
 
 template <typename T>
-inline bool pretty_print(std::ostream& stream, const print_formatted<T>& value);
+inline bool pretty_print(std::ostream& stream, const print_formatted<T>& value, DBG_RANK_T);
 
 template <typename T>
-inline bool pretty_print(std::ostream& stream, const print_type<T>&);
+inline bool pretty_print(std::ostream& stream, const print_type<T>&, DBG_RANK_T);
 
 template <typename Enum>
 inline typename std::enable_if<std::is_enum<Enum>::value, bool>::type
-pretty_print(std::ostream& stream, Enum const& value);
+pretty_print(std::ostream& stream, Enum const& value, DBG_RANK_T);
 
-inline bool pretty_print(std::ostream& stream, const std::string& value);
+inline bool pretty_print(std::ostream& stream, const std::string& value, DBG_RANK_T);
 
 #if DBG_MACRO_CXX_STANDARD >= 17
 
-inline bool pretty_print(std::ostream& stream, const std::string_view& value);
+inline bool pretty_print(std::ostream& stream, const std::string_view& value, DBG_RANK_T);
 
 #endif
 
 template <typename T1, typename T2>
-inline bool pretty_print(std::ostream& stream, const std::pair<T1, T2>& value);
+inline bool pretty_print(std::ostream& stream, const std::pair<T1, T2>& value, DBG_RANK_T);
 
 #if DBG_MACRO_CXX_STANDARD >= 17
 
 template <typename T>
-inline bool pretty_print(std::ostream& stream, const std::optional<T>& value);
+inline bool pretty_print(std::ostream& stream, const std::optional<T>& value, DBG_RANK_T);
 
 template <typename... Ts>
-inline bool pretty_print(std::ostream& stream,
-                         const std::variant<Ts...>& value);
+inline bool pretty_print(std::ostream& stream, const std::variant<Ts...>& value, DBG_RANK_T);
 
 #endif
 
 template <typename Container>
 inline typename std::enable_if<detail::is_container<const Container&>::value,
                                bool>::type
-pretty_print(std::ostream& stream, const Container& value);
+pretty_print(std::ostream& stream, const Container& value, DBG_RANK_T);
 
 template <typename ContainerAdapter>
 inline typename std::enable_if<
@@ -507,12 +520,19 @@ pretty_print(std::ostream& stream, ContainerAdapter value);
 // Specializations of "pretty_print"
 
 template <typename T>
-inline void pretty_print(std::ostream& stream, const T& value, std::true_type) {
+inline typename std::enable_if<detail::has_ostream_operator<const T&>::value, bool>::type
+pretty_print(std::ostream& stream, const T& value, DFL_RANK_T) {
+  stream << value;
+  return true;
+}
+
+template <typename T>
+inline void pretty_print(std::ostream& stream, const T& value, std::true_type, DBG_RANK_T) {
   stream << value;
 }
 
 template <typename T>
-inline void pretty_print(std::ostream&, const T&, std::false_type) {
+inline void pretty_print(std::ostream&, const T&, std::false_type, DBG_RANK_T) {
   static_assert(detail::has_ostream_operator<const T&>::value,
                 "Type does not support the << ostream operator");
 }
@@ -523,18 +543,18 @@ inline typename std::enable_if<
         !detail::is_container_adapter<const T&>::value &&
         !std::is_enum<T>::value,
     bool>::type
-pretty_print(std::ostream& stream, const T& value) {
+pretty_print(std::ostream& stream, const T& value, DBG_RANK_T) {
   pretty_print(stream, value,
-               typename detail::has_ostream_operator<const T&>::type{});
+               typename detail::has_ostream_operator<const T&>::type{}, MAX_RANK);
   return true;
 }
 
-inline bool pretty_print(std::ostream& stream, const bool& value) {
+inline bool pretty_print(std::ostream& stream, const bool& value, DBG_RANK_T) {
   stream << std::boolalpha << value;
   return true;
 }
 
-inline bool pretty_print(std::ostream& stream, const char& value) {
+inline bool pretty_print(std::ostream& stream, const char& value, DBG_RANK_T) {
   const bool printable = value >= 0x20 && value <= 0x7E;
 
   if (printable) {
@@ -547,7 +567,7 @@ inline bool pretty_print(std::ostream& stream, const char& value) {
 }
 
 template <typename P>
-inline bool pretty_print(std::ostream& stream, P* const& value) {
+inline bool pretty_print(std::ostream& stream, P* const& value, DBG_RANK_T) {
   if (value == nullptr) {
     stream << "nullptr";
   } else {
@@ -557,28 +577,27 @@ inline bool pretty_print(std::ostream& stream, P* const& value) {
 }
 
 template <typename T, typename Deleter>
-inline bool pretty_print(std::ostream& stream,
-                         std::unique_ptr<T, Deleter>& value) {
-  pretty_print(stream, value.get());
+inline bool pretty_print(std::ostream& stream, std::unique_ptr<T, Deleter>& value, DBG_RANK_T) {
+  pretty_print(stream, value.get(), MAX_RANK);
   return true;
 }
 
 template <typename T>
-inline bool pretty_print(std::ostream& stream, std::shared_ptr<T>& value) {
-  pretty_print(stream, value.get());
+inline bool pretty_print(std::ostream& stream, std::shared_ptr<T>& value, DBG_RANK_T) {
+  pretty_print(stream, value.get(), MAX_RANK);
   stream << " (use_count = " << value.use_count() << ")";
 
   return true;
 }
 
 template <size_t N>
-inline bool pretty_print(std::ostream& stream, const char (&value)[N]) {
+inline bool pretty_print(std::ostream& stream, const char (&value)[N], DFL_RANK_T) {
   stream << value;
   return false;
 }
 
 template <>
-inline bool pretty_print(std::ostream& stream, const char* const& value) {
+inline bool pretty_print(std::ostream& stream, const char* const& value, DBG_RANK_T) {
   stream << '"' << value << '"';
   return true;
 }
@@ -589,7 +608,7 @@ struct pretty_print_tuple {
   static void print(std::ostream& stream, const std::tuple<Ts...>& tuple) {
     pretty_print_tuple<Idx - 1>::print(stream, tuple);
     stream << ", ";
-    pretty_print(stream, std::get<Idx>(tuple));
+    pretty_print(stream, std::get<Idx>(tuple), MAX_RANK);
   }
 };
 
@@ -597,12 +616,12 @@ template <>
 struct pretty_print_tuple<0> {
   template <typename... Ts>
   static void print(std::ostream& stream, const std::tuple<Ts...>& tuple) {
-    pretty_print(stream, std::get<0>(tuple));
+    pretty_print(stream, std::get<0>(tuple), MAX_RANK);
   }
 };
 
 template <typename... Ts>
-inline bool pretty_print(std::ostream& stream, const std::tuple<Ts...>& value) {
+inline bool pretty_print(std::ostream& stream, const std::tuple<Ts...>& value, DBG_RANK_T) {
   stream << "{";
   pretty_print_tuple<sizeof...(Ts) - 1>::print(stream, value);
   stream << "}";
@@ -611,14 +630,14 @@ inline bool pretty_print(std::ostream& stream, const std::tuple<Ts...>& value) {
 }
 
 template <>
-inline bool pretty_print(std::ostream& stream, const std::tuple<>&) {
+inline bool pretty_print(std::ostream& stream, const std::tuple<>&, DBG_RANK_T) {
   stream << "{}";
 
   return true;
 }
 
 template <>
-inline bool pretty_print(std::ostream& stream, const time&) {
+inline bool pretty_print(std::ostream& stream, const time&, DBG_RANK_T) {
   using namespace std::chrono;
 
   const auto now = system_clock::now();
@@ -653,8 +672,7 @@ std::string decimalToBinary(T n) {
 }
 
 template <typename T>
-inline bool pretty_print(std::ostream& stream,
-                         const print_formatted<T>& value) {
+inline bool pretty_print(std::ostream& stream, const print_formatted<T>& value, DBG_RANK_T) {
   if (value.inner < 0) {
     stream << "-";
   }
@@ -687,7 +705,7 @@ inline bool pretty_print(std::ostream& stream,
 }
 
 template <typename T>
-inline bool pretty_print(std::ostream& stream, const print_type<T>&) {
+inline bool pretty_print(std::ostream& stream, const print_type<T>&, DBG_RANK_T) {
   stream << type_name<T>();
 
   stream << " [sizeof: " << sizeof(T) << " byte, ";
@@ -712,21 +730,21 @@ inline bool pretty_print(std::ostream& stream, const print_type<T>&) {
 
 template <typename Enum>
 inline typename std::enable_if<std::is_enum<Enum>::value, bool>::type
-pretty_print(std::ostream& stream, Enum const& value) {
+pretty_print(std::ostream& stream, Enum const& value, DBG_RANK_T) {
   using UnderlyingType = typename std::underlying_type<Enum>::type;
   stream << static_cast<UnderlyingType>(value);
 
   return true;
 }
 
-inline bool pretty_print(std::ostream& stream, const std::string& value) {
+inline bool pretty_print(std::ostream& stream, const std::string& value, DBG_RANK_T) {
   stream << '"' << value << '"';
   return true;
 }
 
 #if DBG_MACRO_CXX_STANDARD >= 17
 
-inline bool pretty_print(std::ostream& stream, const std::string_view& value) {
+inline bool pretty_print(std::ostream& stream, const std::string_view& value, DBG_RANK_T) {
   stream << '"' << std::string(value) << '"';
   return true;
 }
@@ -734,11 +752,11 @@ inline bool pretty_print(std::ostream& stream, const std::string_view& value) {
 #endif
 
 template <typename T1, typename T2>
-inline bool pretty_print(std::ostream& stream, const std::pair<T1, T2>& value) {
+inline bool pretty_print(std::ostream& stream, const std::pair<T1, T2>& value, DBG_RANK_T) {
   stream << "{";
-  pretty_print(stream, value.first);
+  pretty_print(stream, value.first, MAX_RANK);
   stream << ", ";
-  pretty_print(stream, value.second);
+  pretty_print(stream, value.second, MAX_RANK);
   stream << "}";
   return true;
 }
@@ -746,10 +764,10 @@ inline bool pretty_print(std::ostream& stream, const std::pair<T1, T2>& value) {
 #if DBG_MACRO_CXX_STANDARD >= 17
 
 template <typename T>
-inline bool pretty_print(std::ostream& stream, const std::optional<T>& value) {
+inline bool pretty_print(std::ostream& stream, const std::optional<T>& value, DBG_RANK_T) {
   if (value) {
     stream << '{';
-    pretty_print(stream, *value);
+    pretty_print(stream, *value, MAX_RANK);
     stream << '}';
   } else {
     stream << "nullopt";
@@ -759,10 +777,9 @@ inline bool pretty_print(std::ostream& stream, const std::optional<T>& value) {
 }
 
 template <typename... Ts>
-inline bool pretty_print(std::ostream& stream,
-                         const std::variant<Ts...>& value) {
+inline bool pretty_print(std::ostream& stream, const std::variant<Ts...>& value, DBG_RANK_T) {
   stream << "{";
-  std::visit([&stream](auto&& arg) { pretty_print(stream, arg); }, value);
+  std::visit([&stream](auto&& arg) { pretty_print(stream, arg, MAX_RANK); }, value);
   stream << "}";
 
   return true;
@@ -773,7 +790,7 @@ inline bool pretty_print(std::ostream& stream,
 template <typename Container>
 inline typename std::enable_if<detail::is_container<const Container&>::value,
                                bool>::type
-pretty_print(std::ostream& stream, const Container& value) {
+pretty_print(std::ostream& stream, const Container& value, DBG_RANK_T) {
   stream << "{";
   const size_t size = detail::size(value);
   const size_t n = std::min(size_t{10}, size);
@@ -781,7 +798,7 @@ pretty_print(std::ostream& stream, const Container& value) {
   using std::begin;
   using std::end;
   for (auto it = begin(value); it != end(value) && i < n; ++it, ++i) {
-    pretty_print(stream, *it);
+    pretty_print(stream, *it, MAX_RANK);
     if (i != n - 1) {
       stream << ", ";
     }
@@ -878,7 +895,7 @@ class DebugOutput {
   T&& print_impl(const expr_t* expr, const std::string* type, T&& value) {
     const T& ref = value;
     std::stringstream stream_value;
-    const bool print_expr_and_type = pretty_print(stream_value, ref);
+    const bool print_expr_and_type = pretty_print(stream_value, ref, MAX_RANK);
 
     std::stringstream output;
     output << m_location;
